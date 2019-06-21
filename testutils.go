@@ -1,16 +1,26 @@
 package testutils
 
 import (
+	"context"
 	"encoding/hex"
 	"math/rand"
 	"testing"
 
-	"github.com/ipfs/go-datastore"
+	dopts "github.com/libp2p/go-libp2p-kad-dht/opts"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+
+	datastore "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	keystore "github.com/ipfs/go-ipfs-keystore"
+	"github.com/ipfs/go-ipns"
+	"github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peerstore"
+	host "github.com/libp2p/go-libp2p-core/host"
+	peerstore "github.com/libp2p/go-libp2p-core/peerstore"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	pnet "github.com/libp2p/go-libp2p-pnet"
+	record "github.com/libp2p/go-libp2p-record"
 	"github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
@@ -21,6 +31,50 @@ var (
 	// to be reused across tests
 	EncodedPK = "0801124018c93db89bc9614d463003dab59eb9f8028b27835d4b42abe0b707770cbfc6bd9873de48ab48d753e6be17bc50e821e09f50959da17e45448074fdecccf3e7c0"
 )
+
+// NewLibp2pHostAndDHT is used to create a new libp2p host
+// and an unbootstrapped dht
+func NewLibp2pHostAndDHT(
+	ctx context.Context,
+	t *testing.T,
+	logger *zap.Logger,
+	ds datastore.Batching,
+	ps peerstore.Peerstore,
+	pk crypto.PrivKey,
+	addrs []multiaddr.Multiaddr,
+	secret []byte) (host.Host, *dht.IpfsDHT) {
+
+	var opts []libp2p.Option
+	if secret != nil && len(secret) > 0 {
+		var key [32]byte
+		copy(key[:], secret)
+		prot, err := pnet.NewV1ProtectorFromBytes(&key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opts = append(opts, libp2p.PrivateNetwork(prot))
+	}
+	opts = append(opts,
+		libp2p.Identity(pk),
+		libp2p.ListenAddrs(addrs...),
+		libp2p.Peerstore(ps),
+		libp2p.DefaultMuxers,
+		libp2p.DefaultTransports,
+		libp2p.DefaultSecurity)
+	h, err := libp2p.New(ctx, opts...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	idht, err := dht.New(ctx, h,
+		dopts.Validator(record.NamespacedValidator{
+			"pk":   record.PublicKeyValidator{},
+			"ipns": ipns.Validator{KeyBook: ps},
+		}),
+	)
+	rHost := routedhost.Wrap(h, idht)
+	return rHost, idht
+}
 
 // NewPrivateKey is used to create a new private key
 // for testing purposes
