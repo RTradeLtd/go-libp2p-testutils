@@ -2,20 +2,21 @@ package testutils
 
 import (
 	"encoding/hex"
+	"math/rand"
+	"testing"
+
 	"github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
-	"github.com/ipfs/go-ipfs-keystore"
+	keystore "github.com/ipfs/go-ipfs-keystore"
 	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	"github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
-	"math/rand"
-	"testing"
 )
 
-var ( 
+var (
 	// EncodedPK is a hex encoded key
 	// to be reused across tests
 	EncodedPK = "0801124018c93db89bc9614d463003dab59eb9f8028b27835d4b42abe0b707770cbfc6bd9873de48ab48d753e6be17bc50e821e09f50959da17e45448074fdecccf3e7c0"
