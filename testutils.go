@@ -72,6 +72,9 @@ func NewLibp2pHostAndDHT(
 			"ipns": ipns.Validator{KeyBook: ps},
 		}),
 	)
+	if err != nil {
+		t.Fatal(err)	
+	}
 	rHost := routedhost.Wrap(h, idht)
 	return rHost, idht
 }
